@@ -1,41 +1,62 @@
-// netlify/functions/save-wishlist.js
+import { neon } from "@neondatabase/serverless";
 
-import { neon } from '@neondatabase/serverless';   // Neon 공식 패키지
+export async function handler(event) {
+  if (event.httpMethod !== "POST") {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: "Method Not Allowed" }),
+    };
+  }
 
-export default async (req, context) => {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Only POST allowed" }), {
-      status: 405
-    });
+  // Body 파싱
+  let body = {};
+  try {
+    body = JSON.parse(event.body);
+  } catch (err) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Invalid JSON" }),
+    };
+  }
+
+  const { product, link, image } = body; // ★ HTML과 정확히 일치함
+
+  if (!product || !link) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Missing required fields" }),
+    };
   }
 
   try {
-    const body = await req.json();
+    const sql = neon(process.env.DATABASE_URL);
 
-    const { productName, productLink, imageUrl } = body;
-
-    if (!productName || !productLink) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400
-      });
-    }
-
-    // ① NEON DB 연결 (환경 변수에서 URL 사용)
-    const sql = neon(process.env.NEON_DATABASE_URL);
-
-    // ② INSERT 쿼리 실행
+    // 테이블이 처음이면 자동 생성 (안전)
     await sql`
-      INSERT INTO wishlist (product_name, product_link, image_url)
-      VALUES (${productName}, ${productLink}, ${imageUrl})
+      CREATE TABLE IF NOT EXISTS wishlist (
+        id SERIAL PRIMARY KEY,
+        product TEXT NOT NULL,
+        link TEXT NOT NULL,
+        image TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `;
 
-    return new Response(JSON.stringify({ message: "Wishlist saved!" }), {
-      status: 200
-    });
+    // insert
+    await sql`
+      INSERT INTO wishlist (product, link, image)
+      VALUES (${product}, ${link}, ${image});
+    `;
 
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Saved successfully!" }),
+    };
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500
-    });
+    console.error("DB Error:", err);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "DB error", detail: err.message }),
+    };
   }
-};
+}
