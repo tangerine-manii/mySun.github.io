@@ -1,28 +1,25 @@
 <form id="contact-form">
-  <input type="text" name="name" placeholder="Your Name" required />
-  <input type="email" name="email" placeholder="Your Email" required />
-  <textarea name="message" placeholder="Message" required></textarea>
-  <button type="submit">Send</button>
+  <input name="name" placeholder="name" required>
+  <input name="email" placeholder="email" required>
+  <textarea name="message" required></textarea>
+  <button>Submit</button>
 </form>
-
-<p id="result"></p>
 
 <script>
 document.querySelector("#contact-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const formData = {
+  const data = {
     name: e.target.name.value,
     email: e.target.email.value,
-    message: e.target.message.value,
+    message: e.target.message.value
   };
 
-  const res = await fetch("/.netlify/functions/save-form", {
+  await fetch("/.netlify/functions/save-form", {
     method: "POST",
-    body: JSON.stringify(formData),
+    body: JSON.stringify(data)
   });
-
-  document.getElementById("result").innerText =
-    res.ok ? "전송 성공!" : "전송 실패!";
+  
+  alert("Saved!");
 });
 </script>
