@@ -15,7 +15,7 @@ document.querySelector("#contact-form").addEventListener("submit", async (e) => 
     message: e.target.message.value
   };
 
-  await fetch("/.netlify/functions/save-form", {
+  await fetch("/netlify/functions/save-form", {
     method: "POST",
     body: JSON.stringify(data)
   });
