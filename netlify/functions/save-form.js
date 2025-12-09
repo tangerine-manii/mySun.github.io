@@ -1,12 +1,12 @@
-import { neon } from '@netlify/neondb';
+import { neon } from '@netlify/neon';
 
-export const handler = async () => {
-  const sql = neon();
+export default async (event, context) => {
+  const sql = neon(); // automatic NETLIFY_DATABASE_URL
 
-  const rows = await sql`SELECT * FROM posts LIMIT 10`;
+  const [result] = await sql`SELECT now()`;
 
   return {
     statusCode: 200,
-    body: JSON.stringify(rows)
+    body: JSON.stringify(result)
   };
 };
