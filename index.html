@@ -1,25 +1,119 @@
-<form id="contact-form">
-  <input name="name" placeholder="name" required>
-  <input name="email" placeholder="email" required>
-  <textarea name="message" required></textarea>
-  <button>Submit</button>
-</form>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>문의하기</title>
+  <style>
+    body {
+      font-family: "Pretendard", sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-<script>
-document.querySelector("#contact-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+    .form-container {
+      background: #fff;
+      width: 100%;
+      max-width: 420px;
+      padding: 30px 35px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
 
-  const data = {
-    name: e.target.name.value,
-    email: e.target.email.value,
-    message: e.target.message.value
-  };
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #333;
+      font-size: 24px;
+    }
 
-  await fetch("/netlify/functions/save-form", {
-    method: "POST",
-    body: JSON.stringify(data)
-  });
-  
-  alert("Saved!");
-});
-</script>
+    input, textarea {
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      border: 1px solid #d8dbe2;
+      font-size: 15px;
+      transition: 0.2s;
+      background: #fafbfc;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #4a8cff;
+      outline: none;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(74,140,255,0.15);
+    }
+
+    textarea {
+      height: 100px;
+      resize: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #4a8cff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #3a78e6;
+    }
+
+    .success-message {
+      text-align: center;
+      margin-top: 12px;
+      color: #2a7a2a;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="form-container">
+    <h2>문의하기</h2>
+
+    <form id="contact-form">
+      <input name="name" placeholder="이름" required>
+      <input name="email" placeholder="이메일" required>
+      <textarea name="message" placeholder="메시지" required></textarea>
+      <button type="submit">보내기</button>
+    </form>
+
+    <p class="success-message" id="success-msg">저장되었습니다!</p>
+  </div>
+
+  <script>
+    document.querySelector("#contact-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const data = {
+        name: e.target.name.value,
+        email: e.target.email.value,
+        message: e.target.message.value
+      };
+
+      await fetch("/netlify/functions/save-form", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+
+      document.getElementById("success-msg").style.display = "block";
+
+      // 입력값 초기화
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>
