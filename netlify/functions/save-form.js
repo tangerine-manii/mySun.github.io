@@ -1,24 +1,12 @@
-import { neon } from '@netlify/neon';
+import { neon } from '@netlify/neondb';
 
-export const handler = async (event) => {
-  try {
-    const { name, email, message } = JSON.parse(event.body);
+export const handler = async () => {
+  const sql = neon();
 
-    const sql = neon(); // NETLIFY_DATABASE_URL 사용
+  const rows = await sql`SELECT * FROM posts LIMIT 10`;
 
-    await sql`
-      INSERT INTO contact_form (name, email, message)
-      VALUES (${name}, ${email}, ${message})
-    `;
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ ok: true })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
-    };
-  }
+  return {
+    statusCode: 200,
+    body: JSON.stringify(rows)
+  };
 };
