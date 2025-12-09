@@ -1,62 +1,73 @@
-import { neon } from "@neondatabase/serverless";
+// netlify/functions/save-wishlist.js
 
-export async function handler(event) {
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
-    };
-  }
+const { Client } = require("pg");
+const multiparty = require("multiparty");
+const fs = require("fs");
+const path = require("path");
 
-  // Body 파싱
-  let body = {};
+exports.handler = async (event) => {
   try {
-    body = JSON.parse(event.body);
-  } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Invalid JSON" }),
-    };
-  }
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method Not Allowed" };
+    }
 
-  const { product, link, image } = body; // ★ HTML과 정확히 일치함
+    // parse form-data
+    const form = new multiparty.Form();
 
-  if (!product || !link) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Missing required fields" }),
-    };
-  }
+    const data = await new Promise((resolve, reject) => {
+      form.parse(event, (err, fields, files) => {
+        if (err) reject(err);
+        resolve({ fields, files });
+      });
+    });
 
-  try {
-    const sql = neon(process.env.DATABASE_URL);
+    const name = data.fields.name?.[0];
+    const url = data.fields.url?.[0];
+    const imageFile = data.files.image?.[0];
 
-    // 테이블이 처음이면 자동 생성 (안전)
-    await sql`
-      CREATE TABLE IF NOT EXISTS wishlist (
-        id SERIAL PRIMARY KEY,
-        product TEXT NOT NULL,
-        link TEXT NOT NULL,
-        image TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
+    if (!name || !url || !imageFile) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing required fields" }),
+      };
+    }
+
+    // 이미지 저장
+    const uploadDir = path.join("/tmp", imageFile.originalFilename);
+    fs.copyFileSync(imageFile.path, uploadDir);
+
+    // DB 연결
+    const client = new Client({
+      connectionString: process.env.DATABASE_URL,
+    });
+
+    await client.connect();
+
+    const query = `
+      INSERT INTO wishlist (name, url, image_path)
+      VALUES ($1, $2, $3)
+      RETURNING *
     `;
 
-    // insert
-    await sql`
-      INSERT INTO wishlist (product, link, image)
-      VALUES (${product}, ${link}, ${image});
-    `;
+    const result = await client.query(query, [
+      name,
+      url,
+      imageFile.originalFilename,
+    ]);
+
+    await client.end();
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Saved successfully!" }),
+      body: JSON.stringify({
+        ok: true,
+        saved: result.rows[0],
+      }),
     };
   } catch (err) {
-    console.error("DB Error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "DB error", detail: err.message }),
+      body: JSON.stringify({ error: "Server error", detail: err.message }),
     };
   }
-}
+};
