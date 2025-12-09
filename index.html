@@ -1,135 +1,67 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>Wishlist</title>
   <style>
-    /* 간단한 스타일 (생략 가능) */
-    * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; display:flex; justify-content:center; padding:40px; background:#f4f6f9; }
-    .card { width:100%; max-width:480px; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.06); }
-    input, button, textarea { width:100%; padding:10px; margin-top:8px; border-radius:8px; border:1px solid #ddd; }
-    .preview { height:160px; background:#f1f3f5; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-top:8px; overflow:hidden; }
-    .preview img { width:100%; object-fit:cover; }
+    #wishlist-box {
+      width: 480px;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      font-family: sans-serif;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Wish List 등록</h2>
 
-    <form id="wishlist-form">
-      <input name="product" id="product" placeholder="제품명" required />
-      <input name="link" id="link" placeholder="제품 링크 (http://...)" required />
-      
-      <div class="preview" id="preview">사진 미리보기</div>
-      <input type="file" id="imageInput" accept="image/*" />
+<div id="wishlist-box">
+  <h2>Wishlist</h2>
 
-      <button type="submit">등록하기</button>
-    </form>
+  <form id="wishlist-form" enctype="multipart/form-data">
+    <input name="name" placeholder="제품명" required />
+    <input name="url" placeholder="제품 링크" required />
+    <input type="file" name="image" accept="image/*" required />
+    <button>저장하기</button>
+  </form>
+</div>
 
-    <p id="status" style="margin-top:12px;color:#2a7a2a; display:none;"></p>
-  </div>
+<script>
+document.querySelector("#wishlist-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-  <script>
-    // ----------------------------
-    // 1) 이미지 미리보기 & Base64 변환 준비
-    // ----------------------------
-    const imageInput = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
-    let lastBase64Image = null; // 업로드된 이미지의 base64
+  const formData = new FormData(e.target);
 
-    imageInput.addEventListener("change", () => {
-      const file = imageInput.files[0];
-      if (!file) {
-        preview.innerHTML = "사진 미리보기";
-        lastBase64Image = null;
-        return;
-      }
+  const res = await fetch("/.netlify/functions/save-wishlist", {
+    method: "POST",
+    body: formData
+  });
 
-      // 간단한 파일 크기 제한 (예: 2MB)
-      const maxBytes = 2 * 1024 * 1024;
-      if (file.size > maxBytes) {
-        alert("이미지 파일은 2MB 이하만 허용됩니다.");
-        imageInput.value = "";
-        preview.innerHTML = "사진 미리보기";
-        lastBase64Image = null;
-        return;
-      }
+  const result = await res.json();
+  alert(JSON.stringify(result));
+});
+</script>
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        // e.target.result 은 data:image/...;base64,... 형태
-        const dataUrl = e.target.result;
-        preview.innerHTML = `<img src="${dataUrl}" alt="preview">`;
-        lastBase64Image = dataUrl; // 서버로 보낼 값
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // ----------------------------
-    // 2) 폼 제출 핸들러 (fetch 호출)
-    // ----------------------------
-    const form = document.getElementById("wishlist-form");
-    const statusEl = document.getElementById("status");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      // 입력값 수집
-      const product = document.getElementById("product").value.trim();
-      const link = document.getElementById("link").value.trim();
-
-      if (!product || !link) {
-        alert("제품명과 링크는 필수입니다.");
-        return;
-      }
-
-      // 기본 UX
-      statusEl.style.display = "block";
-      statusEl.style.color = "#333";
-      statusEl.innerText = "저장 중...";
-
-      // 보낼 데이터 구성
-      const payload = {
-        product,
-        link,
-        image: lastBase64Image // null 이면 서버에서 처리 가능(옵션)
-      };
-
-      try {
-        // Netlify Functions 경로: /.netlify/functions/{함수이름}
-        // (네가 만든 함수 이름이 save-wishlist 라면 아래 URL 유지)
-        const res = await fetch("/.netlify/functions/save-wishlist", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload),
-          // credentials 등은 필요없음(동일 도메인)
-        });
-
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(err || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        statusEl.style.color = "#2a7a2a";
-        statusEl.innerText = data.message || "저장되었습니다!";
-
-        // 초기화
-        form.reset();
-        preview.innerHTML = "사진 미리보기";
-        lastBase64Image = null;
-      } catch (err) {
-        console.error("save error:", err);
-        statusEl.style.color = "crimson";
-        statusEl.innerText = "저장에 실패했습니다. 콘솔을 확인하세요.";
-      }
-
-      // 3초 후 상태 메시지 숨기기
-      setTimeout(() => { statusEl.style.display = "none"; }, 3000);
-    });
-  </script>
 </body>
 </html>
